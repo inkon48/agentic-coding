@@ -1,0 +1,190 @@
+openapi: 3.0.3
+info:
+  title: Book REST API
+  version: 0.1.0
+  description: |
+    The MVP Book REST API — create, read, update, delete, and search a library
+    of books. Aligned with specs/mission.md and specs/tech-stack.md.
+servers:
+  - url: http://localhost:3000
+paths:
+  /health:
+    get:
+      summary: Liveness check
+      operationId: getHealth
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /books:
+    get:
+      summary: List books (optionally filtered)
+      operationId: listBooks
+      parameters:
+        - name: title
+          in: query
+          required: false
+          description: Substring filter on title (case-insensitive)
+          schema:
+            type: string
+        - name: author
+          in: query
+          required: false
+          description: Substring filter on author (case-insensitive)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A list of books
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Book"
+    post:
+      summary: Create a book
+      operationId: createBook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewBook"
+      responses:
+        "201":
+          description: Book created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /books/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Book UUID
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get one book
+      operationId: getBook
+      responses:
+        "200":
+          description: The requested book
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: Update a book (full replace)
+      operationId: updateBook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewBook"
+      responses:
+        "200":
+          description: Updated book
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Delete a book
+      operationId: deleteBook
+      responses:
+        "204":
+          description: Deleted (no content)
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+    NewBook:
+      type: object
+      required: [title, author, publishedYear]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        author:
+          type: string
+          minLength: 1
+          maxLength: 200
+        publishedYear:
+          type: integer
+          minimum: 0
+    Book:
+      allOf:
+        - $ref: "#/components/schemas/NewBook"
+        - type: object
+          required: [id, createdAt, updatedAt]
+          properties:
+            id:
+              type: string
+              format: uuid
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [validation_error]
+            message:
+              type: string
+            issues:
+              type: array
+              items:
+                type: object
+  responses:
+    BadRequest:
+      description: Invalid request (validation error)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
